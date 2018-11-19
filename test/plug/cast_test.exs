@@ -45,6 +45,47 @@ defmodule OpenApiSpex.Plug.CastTest do
 
       assert conn.status == 200
     end
+
+    test "opts[:compat_params?]" do
+      conn =
+        :get
+        |> Plug.Test.conn("/api/cast_with_compat_params/?validParam=true")
+        |> OpenApiSpexTest.Router.call([])
+
+      assert conn.query_params == %{"validParam" => "true"}
+      assert conn.params == %{validParam: true}
+      assert conn.status == 200
+
+      conn =
+        :get
+        |> Plug.Test.conn("/api/cast_with_compat_params/123")
+        |> OpenApiSpexTest.Router.call([])
+
+      assert conn.path_params == %{"id" => "123"}
+      assert conn.params == %{id: 123}
+      assert conn.status == 200
+
+      body =
+        Poison.encode!(%{
+        "user" => %{
+          "name" => "Joe User",
+          "email" => "joe@gmail.com"
+        }
+      })
+
+      conn =
+        :patch
+        |> Plug.Test.conn("/api/cast_with_compat_params/123", body)
+        |> Plug.Conn.put_req_header("content-type", "application/json")
+        |> OpenApiSpexTest.Router.call([])
+
+      IO.inspect Map.take(conn, conn |> Map.keys |> Enum.filter(&(&1 |> to_string |> String.ends_with?("params"))))
+      IO.inspect Map.take(conn, conn |> Map.keys |> Enum.filter(&(&1 |> to_string |> String.starts_with?("resp"))))
+      # assert conn.path_params == %{"id" => "123"}
+      # assert conn.params == %{id: 123}
+      assert conn.body_params == %OpenApiSpexTest.Schemas.UserRequest{user: %OpenApiSpexTest.Schemas.User{name: "Joe User", email: "joe@gmail.com"}}
+      assert conn.status == 200
+    end
   end
 
   describe "query params - param with custom error handling" do

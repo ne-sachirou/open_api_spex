@@ -50,7 +50,7 @@ defmodule OpenApiSpex.Plug.CastAndValidate do
   end
 
   @impl Plug
-  def call(conn = %{private: %{open_api_spex: private_data}}, %{
+  def call(conn = %{private: %{open_api_spex: private_data}}, opts = %{
         operation_id: operation_id,
         render_error: render_error
       }) do
@@ -67,7 +67,11 @@ defmodule OpenApiSpex.Plug.CastAndValidate do
     conn = Conn.put_private(conn, :open_api_spex, private_data)
 
     with {:ok, conn} <- OpenApiSpex.cast_and_validate(spec, operation, conn, content_type) do
-      conn
+      if opts[:compat_params?] do
+        update_in(conn.params, &Map.merge(&1, conn.body_params))
+      else
+        conn
+      end
     else
       {:error, reason} ->
         opts = render_error.init(reason)

@@ -3,6 +3,7 @@ defmodule OpenApiSpex.Plug.Cast do
   Module plug that will cast the `Conn.params` and `Conn.body_params` according to the schemas defined for the operation.
   Note that when using this plug, the body params are no longer merged into `Conn.params` and must be read from `Conn.body_params`
   separately.
+  (If you want the same `Conn.params` behaviour as the default, you can give `compat_params?: true`.)
 
   The operation_id can be given at compile time as an argument to `init`:
 
@@ -54,10 +55,13 @@ defmodule OpenApiSpex.Plug.Cast do
   end
 
   @impl Plug
-  def call(conn = %{private: %{open_api_spex: private_data}}, %{
-        operation_id: operation_id,
-        render_error: render_error
-      }) do
+  def call(
+        conn = %{private: %{open_api_spex: private_data}},
+        opts = %{
+          operation_id: operation_id,
+          render_error: render_error
+        }
+      ) do
     spec = private_data.spec
     operation = private_data.operation_lookup[operation_id]
 
@@ -70,16 +74,23 @@ defmodule OpenApiSpex.Plug.Cast do
     private_data = Map.put(private_data, :operation_id, operation_id)
     conn = Conn.put_private(conn, :open_api_spex, private_data)
 
-    case OpenApiSpex.cast(spec, operation, conn, content_type) do
-      {:ok, conn} ->
-        conn
+    conn =
+      case OpenApiSpex.cast(spec, operation, conn, content_type) do
+        {:ok, conn} ->
+          conn
 
-      {:error, reason} ->
-        opts = render_error.init(reason)
+        {:error, reason} ->
+          opts = render_error.init(reason)
 
-        conn
-        |> render_error.call(opts)
-        |> Plug.Conn.halt()
+          conn
+          |> render_error.call(opts)
+          |> Plug.Conn.halt()
+      end
+
+    if opts[:compat_params?] do
+      update_in(conn.params, &Map.merge(&1, conn.body_params))
+    else
+      conn
     end
   end
 

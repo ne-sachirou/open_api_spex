@@ -26,6 +26,9 @@ defmodule OpenApiSpexTest.Router do
       resources "/custom_error_users", CastAndValidate.CustomErrorUserController, only: [:index]
     end
 
+    resources "/cast_with_compat_params", CastWithCompatParamsController, only: [:index, :show, :update]
+    # resources "/cast_and_validate_with_compat_params", CastAndValidateWithCompatParamsController, only: [:show, :create]
+
     get "/users/:id/payment_details", UserController, :payment_details
     post "/users/:id/contact_info", UserController, :contact_info
     post "/users/create_entity", UserController, :create_entity
